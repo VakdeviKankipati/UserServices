@@ -110,6 +110,7 @@ public class SecurityConfig {
 //        return new InMemoryRegisteredClientRepository(oidcClient);
 //    }
 
+
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
         KeyPair keyPair = generateRsaKey();
