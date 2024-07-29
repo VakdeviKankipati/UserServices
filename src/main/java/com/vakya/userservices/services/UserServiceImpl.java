@@ -1,10 +1,14 @@
 package com.vakya.userservices.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vakya.userservices.dtos.SendEmailEventDto;
 import com.vakya.userservices.models.Token;
 import com.vakya.userservices.models.User;
 import com.vakya.userservices.repositories.TokenRepository;
 import com.vakya.userservices.repositories.UserRepository;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -19,26 +23,48 @@ public class UserServiceImpl implements UserService{
     private UserRepository userRepository;
     private TokenRepository tokenRepository;
     protected BCryptPasswordEncoder bCryptPasswordEncoder;
+    private KafkaTemplate<String, String> kafkaTemplate;
+    private ObjectMapper objectMapper;
 
-    public UserServiceImpl(UserRepository userRepository, TokenRepository tokenRepository, BCryptPasswordEncoder bCryptPasswordEncoder){
+    public UserServiceImpl(UserRepository userRepository, TokenRepository tokenRepository,
+                           BCryptPasswordEncoder bCryptPasswordEncoder, KafkaTemplate kafkaTemplate,
+                           ObjectMapper objectMapper){
+        this.objectMapper=objectMapper;
         this.bCryptPasswordEncoder=bCryptPasswordEncoder;
         this.userRepository=userRepository;
         this.tokenRepository=tokenRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
     @Override
     public User signUp(String name, String email, String password) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         User user = null;
-        if (optionalUser.isPresent()){
+        //if (optionalUser.isPresent()){
             //navigate them to login
-        }else{
+       // }else{
             //create new user Object
             user = new User();
             user.setName(name);
             user.setEmail(email);
             user.setHashedPassword(bCryptPasswordEncoder.encode(password));
             user = userRepository.save(user);
-        }
+
+            //Publish an event inside the Queue
+            SendEmailEventDto emailEventDto = new SendEmailEventDto();
+            emailEventDto.setTo(email);
+            emailEventDto.setFrom("vakya85@gmail.com");
+            emailEventDto.setSubject("Welcome to Scaler");
+            emailEventDto.setBody("Welcome to Scaler, We are very happy to have you on our platform. All the best!!");
+
+            try {
+                kafkaTemplate.send(
+                        "sendEmail",
+                        objectMapper.writeValueAsString(emailEventDto)
+                );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+       // }
         return user;
     }
 
@@ -47,9 +73,9 @@ public class UserServiceImpl implements UserService{
         Optional<User> optionalUser = userRepository.findByEmail(email);
         User user = null;
 
-        if (optionalUser.isEmpty()) {
+        //if (optionalUser.isEmpty()) {
             //signup method.
-        } else {
+       // } else {
             user = optionalUser.get();
 
             if (!bCryptPasswordEncoder.matches(password, user.getHashedPassword())) {
@@ -61,9 +87,9 @@ public class UserServiceImpl implements UserService{
             token = tokenRepository.save(token);
 
             return token;
-        }
+       // }
 
-        return null;
+        //return null;
     }
 
     private Token createToken(User user) {
@@ -107,5 +133,15 @@ public class UserServiceImpl implements UserService{
          Token token1 = optionalToken.get();
         token1.setDeleted(true);
         tokenRepository.save(token1);
+    }
+
+    @Override
+    public User getUserDetails(Long userId) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+
+        if(optionalUser.isEmpty()){
+            throw new RuntimeException("User with id:" +userId+ "not found");
+        }
+        return optionalUser.get();
     }
 }

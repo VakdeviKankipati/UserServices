@@ -68,4 +68,9 @@ public class UserController {
 
         return responseEntity;
     }
+    @GetMapping("/{id}")
+    public UserDto getUserDetails(@PathVariable("id") Long userId){
+        System.out.println("Received getUserDetails Api request");
+        return  UserDto.fromUser(userService.getUserDetails(userId));
+    }
 }

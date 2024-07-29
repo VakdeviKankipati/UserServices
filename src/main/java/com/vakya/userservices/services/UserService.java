@@ -15,5 +15,7 @@ public interface UserService {
 
     void logout(String token);
 
+    User getUserDetails(Long userId);
+
 
 }
