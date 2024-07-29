@@ -134,7 +134,6 @@ public class UserServiceImpl implements UserService{
         token1.setDeleted(true);
         tokenRepository.save(token1);
     }
-
     @Override
     public User getUserDetails(Long userId) {
         Optional<User> optionalUser = userRepository.findById(userId);

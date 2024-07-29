@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 
 
 public interface UserService {
-
     User signUp(String name, String email, String password);
 
     Token login(String email, String password);
